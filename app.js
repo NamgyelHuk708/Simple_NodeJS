@@ -6,8 +6,10 @@ app.get('/', (req, res) => {
   res.send('Hello from Node.js CI/CD Pipeline!');
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+module.exports = app; // Important for testing
 
-module.exports = app; // For testing
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}

@@ -1,7 +1,7 @@
 pipeline {
   agent any
   tools {
-    nodejs 'NodeJS 24.0.2'
+    nodejs 'NodeJS 24.0.2' 
   }
   
   stages {
@@ -11,7 +11,7 @@ pipeline {
       }
     }
     
-    stage('Install Dependencies') {
+    stage('Install') {
       steps {
         sh 'npm install'
       }
@@ -19,7 +19,7 @@ pipeline {
     
     stage('Test') {
       steps {
-        sh 'npm run test:ci || echo "Test failed - continuing to archive results'
+        sh 'npm run test:ci'
       }
       post {
         always {
@@ -38,14 +38,13 @@ pipeline {
     stage('Deploy') {
       steps {
         sh 'echo "Deploying to staging..."'
-        // Add your deployment commands here
       }
     }
   }
   
   post {
     always {
-      archiveArtifacts artifacts: '**/build/**/*', fingerprint: true
+      archiveArtifacts artifacts: 'coverage/**/*', fingerprint: true
     }
   }
 }
