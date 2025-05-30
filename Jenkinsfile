@@ -11,8 +11,14 @@ pipeline {
     }
     stage('Test') {
       steps {
-        sh 'npm test'  // Assumes test script exists in package.json
+        sh 'npm run test:ci'
       }
+      post {
+        always {
+          junit 'junit.xml'
+        }
+      }
+    }
     }
     stage('Build') {
       steps {
