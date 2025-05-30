@@ -1,20 +1,20 @@
-# Use official Node.js 20 image (matches  Practical 4 setup)
+# Use Node.js 20 (matches Jenkins setup)
 FROM node:20-alpine
 
-# Set working directory - follows Jenkins best practices
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
 
-# Copy package files first for optimal layer caching
+# Copy package files first (caching optimization)
 COPY package*.json ./
 
-# Install exact versions - ensures consistency
+# Install dependencies
 RUN npm ci --only=production
 
-# Copy app source - done separately to leverage caching
+# Copy app source
 COPY . .
 
-# Expose port 3000 - standard for Node.js apps
+# Expose port 
 EXPOSE 3000
 
-# Runtime command - matches your package.json
+# Start command
 CMD ["npm", "start"]

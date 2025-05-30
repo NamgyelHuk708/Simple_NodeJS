@@ -1,55 +1,73 @@
 pipeline {
-    agent any
-    tools {
-        nodejs 'NodeJS-24.0.2'
+  agent any
+  tools {
+    nodejs 'NodeJS-24.0.2'  // Must match your Jenkins config
+  }
+  environment {
+    CI = 'true'
+    DOCKER_IMAGE = "namgyelhuk708/nodejs-app"  // Replace with your Docker Hub repo
+    DOCKER_CREDS = credentials('dockerhub-creds')        // Matches the credentials ID
+  }
+  stages {
+    // Stage 1: Checkout code (from Practical 4)
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
-    environment {
-        CI = 'true'
-        DOCKER_REGISTRY = "namgyelhuk708"
-        APP_NAME = "practical-node-app"
-        DOCKER_CREDENTIALS_ID = "docker-credentials"
+
+    // Stage 2: Install dependencies
+    stage('Install') {
+      steps {
+        sh 'npm ci'
+      }
     }
-    
-    stages {
-        stage('Checkout') { steps { checkout scm } }
-        stage('Install') { steps { sh 'npm install' } }
-        stage('Test') { 
-            steps { sh 'npm run test:ci' }
-            post { always { junit 'junit.xml' } }
+
+    // Stage 3: Run tests (with JUnit reports)
+    stage('Test') {
+      steps {
+        sh 'npm run test:ci'  // Ensure this script exists in package.json
+      }
+      post {
+        always {
+          junit 'junit.xml'   // Publish test reports
         }
-        stage('Build') { steps { sh 'npm run build' } }
-        
-        // Docker stages MUST be before Deploy
-        stage('Docker Build') {
-            steps {
-                script {
-                    dockerImage = docker.build("${DOCKER_REGISTRY}/${APP_NAME}:${BUILD_NUMBER}")
-                }
-            }
-        }
-        stage('Docker Push') {
-            steps {
-                script {
-                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                        dockerImage.push()
-                        if (env.BRANCH_NAME == 'main') {
-                            dockerImage.push('latest')
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Deploy') {
-            steps {
-                script {
-                    if (env.BRANCH_NAME == 'main') {
-                        sh 'echo "Production deployment"'
-                    } else {
-                        sh 'echo "Staging deployment"'
-                    }
-                }
-            }
-        }
+      }
     }
+
+    // Stage 4: Build Docker image
+    stage('Docker Build') {
+      steps {
+        script {
+          docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+        }
+      }
+    }
+
+    // Stage 5: Push to Docker Hub (securely)
+    stage('Docker Push') {
+      steps {
+        script {
+          docker.withRegistry('', env.DOCKER_CREDS) {
+            docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}").push()
+            docker.image("${DOCKER_IMAGE}:latest").push()  // Also push as 'latest'
+          }
+        }
+      }
+    }
+
+    // Stage 6: Simulate Deployment
+    stage('Deploy') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            sh 'echo "Deploying to production..."'
+            // Add real deployment commands (e.g., kubectl, SSH)
+          } else {
+            sh 'echo "Deploying to staging..."'
+          }
+        }
+      }
+    }
+  }
 }
