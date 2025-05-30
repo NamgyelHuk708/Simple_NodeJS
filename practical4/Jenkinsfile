@@ -1,19 +1,23 @@
 pipeline {
     agent any
     tools {
-        nodejs 'NodeJS-24.0.2' // Must match your Jenkins config
+        nodejs 'NodeJS 24.0.2' 
     }
     environment {
         CI = 'true'
+        APP_NAME = "practical-node-app"
+        DOCKER_REGISTRY = "namgyelhuk708" // 
+        DOCKER_CREDENTIALS_ID = "docker-credentials" 
     }
     
     stages {
+        // Existing stages from Practical 4
         stage('Checkout') {
             steps { checkout scm }
         }
         
         stage('Install') {
-            steps { sh 'npm install' }
+            steps { sh 'npm ci' }
         }
         
         stage('Test') {
@@ -26,15 +30,11 @@ pipeline {
             }
         }
         
-        stage('Build') {
-            steps { sh 'npm run build' }
-        }
-        
-        // ===== ADD THESE NEW STAGES =====
+        // New stages for Practical 6
         stage('Docker Build') {
             steps {
                 script {
-                    dockerImage = docker.build("namgyelhuk708/practical-node-app:${BUILD_NUMBER}")
+                    dockerImage = docker.build("${DOCKER_REGISTRY}/${APP_NAME}:${BUILD_NUMBER}")
                 }
             }
         }
@@ -42,7 +42,7 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    docker.withRegistry('', 'docker-credentials') {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
                         dockerImage.push()
                         if (env.BRANCH_NAME == 'main') {
                             dockerImage.push('latest')
@@ -51,15 +51,14 @@ pipeline {
                 }
             }
         }
-        // ================================
         
         stage('Deploy') {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'main') {
-                        sh 'echo "Production deployment"'
+                        sh 'echo "Production deployment triggered for ${DOCKER_REGISTRY}/${APP_NAME}:${BUILD_NUMBER}"'
                     } else {
-                        sh 'echo "Staging deployment"'
+                        sh 'echo "Staging deployment triggered for ${DOCKER_REGISTRY}/${APP_NAME}:${BUILD_NUMBER}"'
                     }
                 }
             }
@@ -68,8 +67,8 @@ pipeline {
     
     post {
         always {
-            sh 'docker system prune -f'
-            cleanWs()
+            sh 'docker system prune -f' // Cleanup
+            cleanWs() // Clean workspace
         }
     }
 }
