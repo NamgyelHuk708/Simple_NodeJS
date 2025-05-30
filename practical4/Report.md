@@ -18,7 +18,7 @@ Security and best practices were applied to:
 
 ## Implementation Steps
 
-### 1. Jenkins Setup & Plugin Installation
+### 1. Jenkins Setup & Plugin Installationvvvv
 
 To enable seamless Node.js and Git integration in Jenkins:
 
