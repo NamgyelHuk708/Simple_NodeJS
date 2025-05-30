@@ -20,7 +20,6 @@ pipeline {
         }
       }
     }
-    }
     stage('Build') {
       steps {
         sh 'npm run build'  // For React/Next.js apps
