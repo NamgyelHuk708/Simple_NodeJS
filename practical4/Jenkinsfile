@@ -1,70 +1,67 @@
+   
 pipeline {
   agent any
+
   tools {
-    nodejs 'NodeJS-24.0.2'  // Must match your Jenkins config
+    nodejs 'NodeJS-24.0.4'
   }
+
   environment {
     CI = 'true'
-    DOCKER_IMAGE = "namgyelhuk708/nodejs-app"  // Replace with your Docker Hub repo
-    DOCKER_CREDS = credentials('dockerhub-creds')        // Matches the credentials ID
+    DOCKER_IMAGE = "namgyelhuk708/nodejs-app"
+    DOCKER_CREDENTIALS_ID = "dockerhub-creds"
   }
-  stages {
-    // Stage 1: Checkout code (from Practical 4)
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
 
-    // Stage 2: Install dependencies
+  stages {
     stage('Install') {
       steps {
-        sh 'npm ci'
+        sh 'npm install'
       }
     }
 
-    // Stage 3: Run tests (with JUnit reports)
+    stage('Build') {
+      steps {
+        sh 'npm run build'
+      }
+    }
+
     stage('Test') {
       steps {
-        sh 'npm run test:ci'  // Ensure this script exists in package.json
+        sh 'npm test'
       }
       post {
         always {
-          junit 'junit.xml'   // Publish test reports
+          junit 'junit.xml'
         }
       }
     }
 
-    // Stage 4: Build Docker image
     stage('Docker Build') {
       steps {
         script {
-          docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+          dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
         }
       }
     }
 
-    // Stage 5: Push to Docker Hub (securely)
     stage('Docker Push') {
       steps {
         script {
-          docker.withRegistry('', env.DOCKER_CREDS) {
-            docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}").push()
-            docker.image("${DOCKER_IMAGE}:latest").push()  // Also push as 'latest'
+          docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+            dockerImage.push()
+            dockerImage.push('latest')
           }
         }
       }
     }
 
-    // Stage 6: Simulate Deployment
     stage('Deploy') {
       steps {
         script {
           if (env.BRANCH_NAME == 'main') {
-            sh 'echo "Deploying to production..."'
-            // Add real deployment commands (e.g., kubectl, SSH)
+            sh 'echo Deploying to production...'
           } else {
-            sh 'echo "Deploying to staging..."'
+            sh 'echo Deploying to staging...'
           }
         }
       }
