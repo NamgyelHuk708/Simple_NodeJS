@@ -1,7 +1,7 @@
 pipeline {
   agent any
   tools {
-    nodejs 'NodeJS-20.x'  // Must match the name in Global Tool Configuration
+    nodejs 'NodeJS 20.0.2'  // Must match the name in Global Tool Configuration
   }
   stages {
     stage('Install') {
