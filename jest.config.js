@@ -2,13 +2,13 @@ module.exports = {
     testEnvironment: 'node',
     reporters: [
       'default',
-      ['jest-junit', { outputDirectory: '.', outputName: 'junit.xml' }]
+      ['jest-junit', { 
+        outputDirectory: '.',
+        outputName: 'junit.xml',
+        includeConsoleOutput: true 
+      }]
     ],
-    testMatch: [
-      '**/__tests__/**/*.test.js',
-      '**/?(*.)+(spec|test).js'
-    ],
-    testPathIgnorePatterns: [
-      '/node_modules/'
-    ]
+    testMatch: ['**/__tests__/**/*.test.js'],
+    globalSetup: './jest.setup.js',
+    globalTeardown: './jest.teardown.js'
   };

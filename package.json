@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:ci": "jest --ci --reporters=jest-junit",
+    "test:ci": "jest --ci --reporters=jest-junit --detectOpenHandles --forceExit",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "lint": "eslint ."
