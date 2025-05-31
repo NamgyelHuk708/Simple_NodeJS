@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "jest --ci --reporters=default --reporters=jest-junit || echo \"Tests failed but continuing\"",
+    "test": "jest --ci --reporters=default --reporters=jest-junit --outputFile=./junit.xml",
     "start": "node app.js"
   },
   "repository": {
