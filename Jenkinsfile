@@ -1,50 +1,63 @@
 pipeline {
   agent any
   tools {
-    nodejs 'NodeJS 24.0.2' 
+    nodejs 'NodeJS-24.0.4'
   }
-  
+  environment {
+    CI = 'true'
+    DOCKER_IMAGE = "namgyelhuk708/nodejs-app"
+    DOCKER_CREDENTIALS_ID = "dockerhub-creds"
+  }
   stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-    
     stage('Install') {
       steps {
         sh 'npm install'
       }
     }
-    
-    stage('Test') {
-      steps {
-        sh 'npm run test:ci'
-      }
-      post {
-        always {
-          junit 'junit.xml'
-          archiveArtifacts artifacts: 'junit.xml', fingerprint: true
-        }
-      }
-    }
-    
     stage('Build') {
       steps {
         sh 'npm run build'
       }
     }
-    
-    stage('Deploy') {
+    stage('Test') {
       steps {
-        sh 'echo "Deploying to staging..."'
+        sh 'npm test'
+      }
+      post {
+        always {
+          junit 'junit.xml'
+        }
       }
     }
-  }
-  
-  post {
-    always {
-      archiveArtifacts artifacts: 'coverage/**/*', fingerprint: true
+    stage('Docker Build') {
+      steps {
+        script {
+          dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+        }
+      }
+    }
+    stage('Docker Push') {
+      steps {
+        script {
+          docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+            dockerImage.push()
+            dockerImage.push('latest')
+          }
+        }
+      }
+    }
+    stage('Deploy') {
+      steps {
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            sh 'echo "Deploying to production..."'
+            // Add your production deployment commands here
+          } else {
+            sh 'echo "Deploying to staging..."'
+            // Add your staging deployment commands here
+          }
+        }
+      }
     }
   }
 }

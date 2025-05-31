@@ -1,179 +1,150 @@
-# Jenkins CI/CD Pipeline Implementation for Node.js Application
+# Practical 5 & 6: Jenkins Declarative Pipeline with Docker Integration
 
-## Objective
+## Overview
 
-The goal of this assignment was to implement a Continuous Integration and Continuous Deployment (CI/CD) pipeline using Jenkins for a Node.js application. The pipeline automates:
+This project extends the Node.js application CI/CD pipeline from Practical 4 by incorporating Docker containerization and Docker Hub integration. The enhanced pipeline now automates building Docker images, pushing them to a container registry, and implementing branch-based deployment strategies.
 
-- Code checkout from a Git repository
-- Dependency installation
-- Automated testing using Jest
-- Test reporting via JUnit
-- Simulated deployment steps
+## Implementation
 
-Security and best practices were applied to:
+### Part 1: Jenkins Pipeline Enhancement
 
-- Avoid hardcoding secrets in the Jenkinsfile
-- Ensure reliable test execution through proper Jest configuration
-- Generate structured and readable test reports for monitoring
+#### Prerequisites
 
-## Implementation Steps
+- Existing Jenkins setup from Practical 4
+- Node.js application repository
+- Docker installed on Jenkins server
+- Docker Hub account
 
-### 1. Jenkins Setup & Plugin Installation
+#### Configuration Steps
 
-To enable seamless Node.js and Git integration in Jenkins:
+**Jenkins Plugin Installation**
 
-Installed essential plugins:
-- **NodeJS Plugin** – for Node.js auto-installation
-- **Git Plugin** – for SCM integration
-- **Pipeline Plugin** – for defining pipelines as code
-- **JUnit Plugin** – for test reporting
+Verified installation of required plugins:
+- Docker Pipeline
+- CloudBees Docker Build and Publish
 
-![alt text](Assets/P4.1.png)
-![alt text](Assets/P4.2.png)
-![alt text](Assets/P4.3.png)
-![alt text](Assets/P4.4.png)
+**Node.js Configuration**
 
-### 2. Node.js Configuration in Jenkins
+- Maintained NodeJS 24.0.4 configuration in Global Tool Configuration
+- Ensured version alignment between Jenkins and Dockerfile
 
-- Configured Node.js 24.0.2 under Global Tool Configuration
-- Ensured consistent runtime across local and CI environments
-- Verified installation in the Jenkinsfile using:
+**Pipeline Setup**
 
-```groovy
-tools { nodejs 'NodeJS 24.0.2' }
-```
+- Created new pipeline job with SCM integration
+- Configured to use Jenkinsfile from repository
 
-![alt text](Assets/P4.10.png)
-
-### 3. Pipeline Job Creation
-
-- Created a Pipeline job in Jenkins
-- Configured SCM integration with the Node.js GitHub repository
-- Set Script Path to Jenkinsfile for pipeline-as-code setup
-
-![alt text](Assets/P4.6.png)
-
-![alt text](Assets/P4.5.png)
-
-### 4. Jenkinsfile Implementation
-
-Defined a declarative pipeline with multiple stages:
+#### Pipeline Stages
 
 ```groovy
 pipeline {
   agent any
-  tools {
-    nodejs 'NodeJS 24.0.2' 
+  tools { nodejs 'NodeJS-24.0.4' }
+  environment {
+    CI = 'true'
+    DOCKER_IMAGE = "namgyelhuk708/nodejs-app"
+    DOCKER_CREDENTIALS_ID = "dockerhub-creds"
   }
-  
   stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
-    }
-    
-    stage('Install') {
-      steps {
-        sh 'npm install'
-      }
-    }
-    
+    // Existing stages from Practical 4
+    stage('Install') { steps { sh 'npm install' } }
+    stage('Build') { steps { sh 'npm run build' } }
     stage('Test') {
+      steps { sh 'npm test' }
+      post { always { junit 'junit.xml' } }
+    }
+    
+    // New Docker stages
+    stage('Docker Build') {
       steps {
-        sh 'npm run test:ci'
-      }
-      post {
-        always {
-          junit 'junit.xml'
-          archiveArtifacts artifacts: 'junit.xml', fingerprint: true
+        script {
+          dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
         }
       }
     }
-    
-    stage('Build') {
+    stage('Docker Push') {
       steps {
-        sh 'npm run build'
+        script {
+          docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+            dockerImage.push()
+            dockerImage.push('latest')
+          }
+        }
       }
     }
-    
     stage('Deploy') {
       steps {
-        sh 'echo "Deploying to staging..."'
+        script {
+          if (env.BRANCH_NAME == 'main') {
+            sh 'echo "Deploying to production..."'
+          } else {
+            sh 'echo "Deploying to staging..."'
+          }
+        }
       }
     }
   }
-  
-  post {
-    always {
-      archiveArtifacts artifacts: 'coverage/**/*', fingerprint: true
-    }
-  }
 }
 ```
 
-- **Checkout:** Pulls the latest code
-- **Install:** Installs project dependencies
-- **Test:** Runs Jest with JUnit reporting
-- **Deploy:** Simulates deployment with a shell command
+### Part 2: Docker Integration
 
-![alt text](Assets/P4.7.png)
+#### Docker Configuration
 
-Successfully tested in the terminal
+**Dockerfile Implementation**
 
-![alt text](Assets/P4.9.png)
-
-### 5. Automated Testing with Jest & JUnit Reporting
-
-Configured the package.json with the following test scripts:
-
-```json
-"scripts": {
-  "test": "jest",
-  "test:ci": "jest --ci --reporters=default --reporters=jest-junit --coverage"
-}
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
 ```
 
-- Used jest-junit to output results in junit.xml
-- Jenkins uses the JUnit plugin to display test results
+**Local Testing**
 
-![alt text](Assets/P4.11.png)
+Built and tested image locally:
 
-successfully build
+```bash
+docker build -t namgyelhuk708/nodejs-app:test .
+docker run -p 3000:3000 namgyelhuk708/nodejs-app:test
+```
 
-![alt text](Assets/P4.8.png) 
+**Docker Hub Setup**
 
-## Challenges Faced & Solutions
+- Created public repository: namgyelhuk708/nodejs-app
+- Configured Jenkins credentials with ID dockerhub-creds
 
-### Test Stage Failing (Missing Test Files)
+#### Security Implementation
 
-- **Problem:** Jest did not detect test files, causing the test stage to fail.
-- **Solution:** Renamed test files to follow Jest's naming convention (*.test.js).
+- Used Jenkins credential binding for Docker Hub authentication
+- Implemented branch-based deployment logic
+- Added error handling in pipeline stages
 
-### JUnit Report Not Generated
+## Challenges and Solutions
 
-- **Problem:** Test results were not visible in Jenkins.
-- **Solution:** Installed jest-junit and correctly configured the output path as junit.xml.
+| Challenge | Solution | Evidence |
+|-----------|----------|----------|
+| Docker push authentication failures | Verified credential permissions and Docker Hub repository access | Updated credentials in Jenkins credential store |
+| Node.js version conflicts | Standardized on Node 20 across Dockerfile and Jenkins | Modified Dockerfile to use node:20-alpine |
+| Test reporting inconsistencies | Added explicit jest-junit configuration | Updated package.json test scripts |
+| Docker build failures on Jenkins | Added Docker to Jenkins user group | Executed `sudo usermod -aG docker jenkins` |
 
-### Node.js Version Mismatch
+## Results and Verification
 
-- **Problem:** Jenkins used a different Node.js version than the local environment.
-- **Solution:** Set Node.js 24.0.2 in Jenkins' Global Tool Configuration to match the development setup.
-
-
-### Pipeline Syntax Errors in Jenkinsfile
-
-- **Problem:** Initial Jenkinsfile had syntax issues like misused quotes and blocks.
-- **Solution:** Reviewed and corrected syntax using the Jenkins console log and linter.
-
-## Key Learnings
-
-- **Pipeline as Code** using Jenkinsfile supports version-controlled and maintainable automation
-- **Automated Testing** ensures quality and early bug detection in CI pipelines
-- **Security Best Practices** such as externalizing credentials strengthen the pipeline
-- **Tool Integration** with NodeJS, Git, and JUnit makes Jenkins powerful and extensible
-- **Debugging Techniques** like using test logs and console outputs helped quickly resolve failures
+- Successfully built and pushed Docker images to Docker Hub
+- Verified automated image versioning through BUILD_NUMBER
+- Confirmed branch-specific deployment logic execution
+- Maintained all existing test reporting functionality
 
 ## Conclusion
 
-This assignment successfully implemented a secure, maintainable, and automated CI/CD pipeline for a Node.js application using Jenkins.
+This enhanced pipeline demonstrates:
+
+- Complete automation from code commit to container deployment
+- Secure handling of Docker Hub credentials
+- Robust containerization of Node.js applications
+- Effective branch-based environment management
+
+The implementation provides a production-ready CI/CD workflow that combines the reliability of Jenkins with the portability of Docker containers.
