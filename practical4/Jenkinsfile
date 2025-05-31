@@ -1,4 +1,3 @@
-   
 pipeline {
   agent any
 
@@ -39,6 +38,8 @@ pipeline {
     stage('Docker Build') {
       steps {
         script {
+          // Add debug output
+          echo "Building Docker image: ${DOCKER_IMAGE}:${BUILD_NUMBER}"
           dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
         }
       }
@@ -47,9 +48,22 @@ pipeline {
     stage('Docker Push') {
       steps {
         script {
-          docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-            dockerImage.push()
-            dockerImage.push('latest')
+          // Add more debug info
+          echo "Pushing to Docker Hub with credentials ID: ${DOCKER_CREDENTIALS_ID}"
+          echo "Image tags: ${DOCKER_IMAGE}:${BUILD_NUMBER} and latest"
+          
+          try {
+            docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+              dockerImage.push()
+              dockerImage.push('latest')
+              echo "Push successful!"
+            }
+          } catch (Exception e) {
+            echo "Push failed: ${e.getMessage()}"
+            // Print more debug info
+            sh 'docker images'
+            sh 'echo $DOCKER_CREDENTIALS_ID'
+            error("Docker push failed")
           }
         }
       }
