@@ -1,9 +1,31 @@
-// Jenkinsfile
-@Library('nodejs-shared-lib@main') _
+@Library('node-shared-lib') _
 
-nodejsPipeline(
-    appName: "nodejs-app",          // Lowercase, no spaces
-    dockerHubUser: "namgyelhuk708",
-    dockerCredsId: "dockerhub-creds",  // Must match Jenkins credentials ID
-    testCommand: "npm run test:ci"    // Optional: override default test command
-)
+pipeline {
+    agent any
+    environment {
+        APP_DIR = 'my-node-app'  
+        DOCKER_IMAGE = 'namgyelhuk708/my-node-app:latest'
+    }
+    stages {
+        stage('Install Dependencies') {
+            steps {
+                nodeUtils.installDependencies(env.APP_DIR)
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                nodeUtils.runTests(env.APP_DIR)
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                nodeUtils.buildDockerImage(env.APP_DIR, env.DOCKER_IMAGE)
+            }
+        }
+        stage('Push to Docker Hub') {
+            steps {
+                nodeUtils.pushToDockerHub(env.DOCKER_IMAGE)
+            }
+        }
+    }
+}
