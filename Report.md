@@ -23,37 +23,58 @@ Verified installation of required plugins:
 - Docker Pipeline
 - CloudBees Docker Build and Publish
 
+![alt text](Assets/1.png)
+
 **Node.js Configuration**
 
 - Maintained NodeJS 24.0.4 configuration in Global Tool Configuration
 - Ensured version alignment between Jenkins and Dockerfile
+
+![alt text](Assets/13.png)
 
 **Pipeline Setup**
 
 - Created new pipeline job with SCM integration
 - Configured to use Jenkinsfile from repository
 
+![alt text](Assets/5.png)
+
+![alt text](Assets/4.png)
+
 #### Pipeline Stages
 
 ```groovy
 pipeline {
   agent any
-  tools { nodejs 'NodeJS-24.0.4' }
+  tools {
+    nodejs 'NodeJS 24.0.2'
+  }
   environment {
     CI = 'true'
     DOCKER_IMAGE = "namgyelhuk708/nodejs-app"
     DOCKER_CREDENTIALS_ID = "dockerhub-creds"
   }
   stages {
-    // Existing stages from Practical 4
-    stage('Install') { steps { sh 'npm install' } }
-    stage('Build') { steps { sh 'npm run build' } }
-    stage('Test') {
-      steps { sh 'npm test' }
-      post { always { junit 'junit.xml' } }
+    stage('Install') {
+      steps {
+        sh 'npm install'
+      }
     }
-    
-    // New Docker stages
+    stage('Build') {
+      steps {
+        sh 'npm ci'
+      }
+    }
+    stage('Test') {
+      steps {
+        sh 'npm test'
+      }
+      post {
+        always {
+          junit 'junit.xml'
+        }
+      }
+    }
     stage('Docker Build') {
       steps {
         script {
@@ -76,8 +97,10 @@ pipeline {
         script {
           if (env.BRANCH_NAME == 'main') {
             sh 'echo "Deploying to production..."'
+            // Add your production deployment commands here
           } else {
             sh 'echo "Deploying to staging..."'
+            // Add your staging deployment commands here
           }
         }
       }
@@ -93,12 +116,25 @@ pipeline {
 **Dockerfile Implementation**
 
 ```dockerfile
+# Use Node.js 20 (matches Jenkins setup)
 FROM node:20-alpine
+
+# Set working directory
 WORKDIR /app
+
+# Copy package files first (caching optimization)
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci --only=production
+
+# Copy app source
 COPY . .
+
+# Expose port 
 EXPOSE 3000
+
+# Start command
 CMD ["npm", "start"]
 ```
 
@@ -111,10 +147,19 @@ docker build -t namgyelhuk708/nodejs-app:test .
 docker run -p 3000:3000 namgyelhuk708/nodejs-app:test
 ```
 
+![alt text](Assets/2.png)
+
+![alt text](Assets/6.png)
+
+
 **Docker Hub Setup**
 
 - Created public repository: namgyelhuk708/nodejs-app
 - Configured Jenkins credentials with ID dockerhub-creds
+
+![alt text](Assets/7.png)
+
+![alt text](Assets/3.png)
 
 #### Security Implementation
 
@@ -131,12 +176,22 @@ docker run -p 3000:3000 namgyelhuk708/nodejs-app:test
 | Test reporting inconsistencies | Added explicit jest-junit configuration | Updated package.json test scripts |
 | Docker build failures on Jenkins | Added Docker to Jenkins user group | Executed `sudo usermod -aG docker jenkins` |
 
+![alt text](Assets/17.png)
+
 ## Results and Verification
 
 - Successfully built and pushed Docker images to Docker Hub
 - Verified automated image versioning through BUILD_NUMBER
 - Confirmed branch-specific deployment logic execution
 - Maintained all existing test reporting functionality
+
+![alt text](Assets/8.png)
+
+![alt text](Assets/9.png)
+
+![alt text](Assets/11.png)
+
+![alt text](Assets/10.png)
 
 ## Conclusion
 
